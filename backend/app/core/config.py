@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+﻿from pydantic_settings import BaseSettings
 from typing import List
 import json
 
@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
     STRIPE_PRICE_MONTHLY: str = ""
     STRIPE_PRICE_YEARLY: str = ""
+
+    FOOTBALL_DATA_API_KEY: str = ""
+    ODDS_API_KEY: str = ""
+    UNDERSTAT_USERNAME: str = ""
+    UNDERSTAT_PASSWORD: str = ""
 
     class Config:
         @classmethod
