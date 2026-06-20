@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+      - name: worker
+        image: ghcr.io/soccermind/worker:latest
+        env:
+        - name: DATABASE_URL
+          value: postgresql+asyncpg://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)
+        - name: REDIS_URL
+          value: redis://redis:6379/0
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: soccermind-secrets
+              key: secret-key
+        envFrom:
+        - secretRef:
+            name: soccermind-secrets

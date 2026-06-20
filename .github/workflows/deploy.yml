@@ -1,0 +1,31 @@
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install soccermind ./infrastructure/helm/soccermind \
+            --namespace soccermind \
+            --set secrets.postgresPassword=${{ secrets.POSTGRES_PASSWORD }} \
+            --set secrets.secretKey=${{ secrets.SECRET_KEY }} \
+            --set secrets.stripeApiKey=${{ secrets.STRIPE_API_KEY }} \
+            --set secrets.stripeWebhookSecret=${{ secrets.STRIPE_WEBHOOK_SECRET }} \
+            --set secrets.nextauthSecret=${{ secrets.NEXTAUTH_SECRET }} \
+            --set secrets.botToken=${{ secrets.BOT_TOKEN }} \
+            --set ingress.host=${{ vars.DOMAIN }}

@@ -1,0 +1,44 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/soccermind
+  tag: latest
+  pullPolicy: Always
+
+backend:
+  replicas: 2
+  image: backend
+
+worker:
+  replicas: 1
+  image: worker
+
+frontend:
+  replicas: 2
+  image: frontend
+
+bot:
+  replicas: 1
+  image: bot
+
+postgres:
+  storage: 10Gi
+
+redis:
+  storage: 1Gi
+
+secrets:
+  postgresUser: soccermind
+  postgresPassword: ""
+  postgresDb: soccermind
+  secretKey: ""
+  stripeApiKey: ""
+  stripeWebhookSecret: ""
+  nextauthSecret: ""
+  botToken: ""
+
+ingress:
+  enabled: true
+  host: yourdomain.com
+  tlsSecretName: soccermind-tls
+  clusterIssuer: letsencrypt-prod

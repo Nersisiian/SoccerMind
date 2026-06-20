@@ -1,0 +1,26 @@
+{
+  "dashboard": {
+    "title": "SoccerMind AI - Overview",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "API Requests",
+        "targets": [
+          {
+            "expr": "http_requests_total",
+            "legendFormat": "{{ method }} {{ path }}"
+          }
+        ]
+      },
+      {
+        "type": "singlestat",
+        "title": "Active Users",
+        "targets": [
+          {
+            "expr": "active_users"
+          }
+        ]
+      }
+    ]
+  }
+}

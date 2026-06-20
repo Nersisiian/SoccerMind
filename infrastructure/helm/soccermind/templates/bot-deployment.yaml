@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.bot.name | default "bot" }}
+  labels:
+    app: bot
+spec:
+  replicas: {{ .Values.bot.replicas }}
+  selector:
+    matchLabels:
+      app: bot
+  template:
+    metadata:
+      labels:
+        app: bot
+    spec:
+      containers:
+      - name: bot
+        image: "{{ .Values.image.repository }}/{{ .Values.bot.image }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: soccermind-secrets
+              key: bot-token
+        - name: NEXT_PUBLIC_API_URL
+          value: "http://backend:8000/api/v1"

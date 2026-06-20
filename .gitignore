@@ -1,0 +1,9 @@
+__pycache__
+*.pyc
+.env
+.venv
+node_modules
+.next
+*.pkl
+!backend/app/ml/models/fallback_model.pkl
+postgres_data

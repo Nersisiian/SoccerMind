@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: ghcr.io/soccermind/backend:latest
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: soccermind-secrets
+              key: secret-key
+        - name: DATABASE_URL
+          value: postgresql+asyncpg://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)
+        - name: REDIS_URL
+          value: redis://redis:6379/0
+        - name: STRIPE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: soccermind-secrets
+              key: stripe-api-key
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: soccermind-secrets
+              key: stripe-webhook-secret
+        - name: CORS_ORIGINS
+          value: '["https://yourdomain.com"]'
+        envFrom:
+        - secretRef:
+            name: soccermind-secrets
+        ports:
+        - containerPort: 8000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
