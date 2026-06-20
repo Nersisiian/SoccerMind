@@ -1,16 +1,19 @@
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
+from app.main import app
 
 @pytest.mark.asyncio
-async def test_register_and_login(client: AsyncClient):
-    # Ğ ĞµĞ³Ğ¸ÑÑ‚Ñ€Ğ°Ñ†Ğ¸Ñ
-    resp = await client.post("/api/v1/auth/register", json={"email": "test@example.com", "password": "secret1234"})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["email"] == "test@example.com"
+async def test_register_and_login():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Ğåãèñòğàöèÿ
+        resp = await ac.post("/api/v1/auth/register", json={"email": "test@example.com", "password": "secret1234"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["email"] == "test@example.com"
 
-    # Ğ›Ğ¾Ğ³Ğ¸Ğ½
-    resp = await client.post("/api/v1/auth/login", data={"username": "test@example.com", "password": "secret1234"})
-    assert resp.status_code == 200
-    tokens = resp.json()
-    assert "access_token" in tokens
+        # Ëîãèí
+        resp = await ac.post("/api/v1/auth/login", data={"username": "test@example.com", "password": "secret1234"})
+        assert resp.status_code == 200
+        tokens = resp.json()
+        assert "access_token" in tokens
