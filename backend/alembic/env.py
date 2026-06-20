@@ -1,9 +1,9 @@
-п»їimport asyncio
+import asyncio
 import sys, os
 from logging.config import fileConfig
 
-# Р”РѕР±Р°РІР»СЏРµРј /app РІ PYTHONPATH, С‡С‚РѕР±С‹ СЂР°Р±РѕС‚Р°Р»Рё РёРјРїРѕСЂС‚С‹ app.*
-sys.path.insert(0, '/app')
+# Добавляем /app в PYTHONPATH, чтобы работали импорты app.*
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
