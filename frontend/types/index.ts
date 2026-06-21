@@ -31,3 +31,4 @@ export interface RoiData {
   total_bets: number;
   wins: number;
 }
+export interface MatchDetail extends Match { odds: any[]; predictions: any[]; }
