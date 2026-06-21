@@ -1,4 +1,4 @@
-from .celery_app import celery_app
+﻿from .celery_app import celery_app
 import asyncio
 from app.db.session import async_session
 from app.ml.train import train_models

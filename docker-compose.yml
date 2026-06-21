@@ -1,4 +1,4 @@
-version: '3.8'
+﻿version: "3.8"
 
 services:
   postgres:
@@ -39,6 +39,21 @@ services:
       context: ./backend
       dockerfile: Dockerfile.worker
     command: celery -A app.tasks.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    command: celery -A app.tasks.celery_app beat --loglevel=info
     env_file:
       - .env
     depends_on:
