@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.models.team import Team
 from app.db.models.match import Match
-from app.db.models.competition import Competition
 from datetime import datetime, timezone
 import uuid
 
@@ -16,27 +15,27 @@ logger = logging.getLogger(__name__)
 BASE_URL = "https://understat.com/league/"
 
 LEAGUE_ID_MAP = {
-    "Английская Премьер‑лига": "EPL",
-    "Ла Лига": "La_liga",
-    "Серия А": "Serie_A",
-    "Бундеслига": "Bundesliga",
-    "Лига 1": "Ligue_1",
+    "EPL": "EPL",
+    "La Liga": "La_liga",
+    "Serie A": "Serie_A",
+    "Bundesliga": "Bundesliga",
+    "Ligue 1": "Ligue_1",
 }
 
-async def fetch_xg_from_understat(db: AsyncSession, league_name: str = "Английская Премьер‑лига"):
-    league_id = LEAGUE_ID_MAP.get(league_name)
+async def fetch_xg_from_understat(db: AsyncSession, league: str = "EPL", season: str = ""):
+    league_id = LEAGUE_ID_MAP.get(league)
     if not league_id:
-        logger.warning(f"Лига {league_name} не найдена в маппинге Understat.")
         return
-
     url = f"{BASE_URL}{league_id}"
+    if season:
+        url += f"/{season}"
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.get(url, timeout=30.0)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, 'lxml')
         except Exception as e:
-            logger.error(f"Ошибка загрузки Understat: {e}")
+            logger.error(f"Understat error: {e}")
             return
 
     scripts = soup.find_all("script")
@@ -46,27 +45,28 @@ async def fetch_xg_from_understat(db: AsyncSession, league_name: str = "Англ
             data_script = script.text
             break
     if not data_script:
-        logger.warning("Не найден JSON с данными матчей на Understat.")
+        logger.warning("Understat: datesData not found")
         return
 
-    # Извлекаем JSON из JavaScript
     match = re.search(r"datesData\s*=\s*'([^']+)'", data_script)
     if not match:
-        match = re.search(r'datesData\s*=\s*"(.*)"', data_script)
+        match = re.search(r'datesData\s*=\s*"([^"]+)"', data_script)
     if not match:
-        logger.warning("Не удалось извлечь JSON datesData.")
+        logger.warning("Understat: cannot extract JSON")
         return
 
-    data = json.loads(match.group(1))
+    try:
+        data = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        logger.error("Understat: invalid JSON")
+        return
 
     for date_str, matches_list in data.items():
         for match_data in matches_list:
             home_name = match_data["h"]["title"]
             away_name = match_data["a"]["title"]
-
             home_team = await _get_or_create_team(db, home_name)
             away_team = await _get_or_create_team(db, away_name)
-
             match_date = datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc)
             match = await db.scalar(
                 select(Match).where(
@@ -76,21 +76,12 @@ async def fetch_xg_from_understat(db: AsyncSession, league_name: str = "Англ
                     Match.kickoff < match_date.replace(hour=23, minute=59),
                 )
             )
-
             if match:
-                match.home_score = match_data.get("h_goals", match.home_score)
-                match.away_score = match_data.get("a_goals", match.away_score)
-                if match_data.get("h_goals") is not None:
-                    match.status = "finished"
-
-                # Сохраняем xG как отдельные поля (можно добавить колонки в модель при необходимости)
-                match.home_xg = match_data.get("h_xg", 0)
-                match.away_xg = match_data.get("a_xg", 0)
-                await db.commit()
-                logger.info(f"Обновлён xG для {home_name} vs {away_name}")
-
-    logger.info(f"Сбор xG из Understat для лиги {league_name} завершён.")
-
+                match.home_xg = match_data.get("h_xg")
+                match.away_xg = match_data.get("a_xg")
+                logger.info(f"xG saved for {home_name} vs {away_name}")
+    await db.commit()
+    logger.info("Understat xG parsing and saving finished.")
 
 async def _get_or_create_team(db: AsyncSession, name: str) -> Team:
     result = await db.execute(select(Team).where(Team.name == name))

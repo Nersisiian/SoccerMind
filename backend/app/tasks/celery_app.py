@@ -37,3 +37,7 @@ celery_app.conf.beat_schedule = {
         "options": {"expires": 3600},
     },
 }
+
+import app.tasks.load_history  # noqa
+
+import app.tasks.load_history  # noqa
