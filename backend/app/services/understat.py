@@ -1,5 +1,7 @@
 ﻿import logging
 import httpx
+import json
+import re
 from bs4 import BeautifulSoup
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -7,8 +9,7 @@ from app.db.models.team import Team
 from app.db.models.match import Match
 from app.db.models.competition import Competition
 from datetime import datetime, timezone
-import asyncio
-import re
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,6 @@ LEAGUE_ID_MAP = {
 }
 
 async def fetch_xg_from_understat(db: AsyncSession, league_name: str = "Английская Премьер‑лига"):
-    """Скачивает страницу лиги Understat, парсит матчи и сохраняет xG."""
     league_id = LEAGUE_ID_MAP.get(league_name)
     if not league_id:
         logger.warning(f"Лига {league_name} не найдена в маппинге Understat.")
@@ -39,7 +39,6 @@ async def fetch_xg_from_understat(db: AsyncSession, league_name: str = "Англ
             logger.error(f"Ошибка загрузки Understat: {e}")
             return
 
-    # Ищем скрипт с данными
     scripts = soup.find_all("script")
     data_script = None
     for script in scripts:
@@ -58,10 +57,8 @@ async def fetch_xg_from_understat(db: AsyncSession, league_name: str = "Англ
         logger.warning("Не удалось извлечь JSON datesData.")
         return
 
-    import json
     data = json.loads(match.group(1))
 
-    # Обработка матчей
     for date_str, matches_list in data.items():
         for match_data in matches_list:
             home_name = match_data["h"]["title"]
@@ -70,7 +67,6 @@ async def fetch_xg_from_understat(db: AsyncSession, league_name: str = "Англ
             home_team = await _get_or_create_team(db, home_name)
             away_team = await _get_or_create_team(db, away_name)
 
-            # Найдём матч по командам и приблизительной дате
             match_date = datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc)
             match = await db.scalar(
                 select(Match).where(
@@ -82,18 +78,14 @@ async def fetch_xg_from_understat(db: AsyncSession, league_name: str = "Англ
             )
 
             if match:
-                # Сохраняем xG
-                match.home_score = match_data.get("h_goals", 0)
-                match.away_score = match_data.get("a_goals", 0)
-                # Обновляем статус, если есть счёт
+                match.home_score = match_data.get("h_goals", match.home_score)
+                match.away_score = match_data.get("a_goals", match.away_score)
                 if match_data.get("h_goals") is not None:
                     match.status = "finished"
 
-                # Добавляем xG в отдельную таблицу или в JSONB поле predictions
-                # Пока для простоты сохраним в поле predicted_score как xG
-                if not match.predictions:
-                    match.home_xg = match_data.get("h_xg", 0)
-                    match.away_xg = match_data.get("a_xg", 0)
+                # Сохраняем xG как отдельные поля (можно добавить колонки в модель при необходимости)
+                match.home_xg = match_data.get("h_xg", 0)
+                match.away_xg = match_data.get("a_xg", 0)
                 await db.commit()
                 logger.info(f"Обновлён xG для {home_name} vs {away_name}")
 
